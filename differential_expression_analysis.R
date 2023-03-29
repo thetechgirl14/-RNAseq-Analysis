@@ -9,7 +9,6 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 BiocManager::install("DESeq2", version = "3.16")
 
-
 # loading the libraries
 library(DESeq2)
 
@@ -51,6 +50,43 @@ colnames(rawCounts) <- substring(colnames(rawCounts), 2)
 # Put the columns of the count data in the same order as rows names of the sample mapping, then make sure it worked
 rawCounts <- rawCounts[,unique(rownames(sampleDataFull))]
 all(colnames(rawCounts) == rownames(sampleDataFull))
+
+# Order the tissue types so that it is sensible and make sure the control sample is first: no dimentia -> dimentia
+sampleDataFull$dementia <- factor(sampleDataFull$dementia, levels=c("No Dementia", "Dementia"))
+
+rawCounts8 <- round(rawCounts)
+
+# Create the DEseq2DataSet object
+deseq2Data <- DESeqDataSetFromMatrix(countData=rawCounts8, colData=sampleDataFull, design= ~ sex + dementia)
+
+dim(deseq2Data)
+
+dim(deseq2Data[rowSums(counts(deseq2Data)) > 5, ])
+
+# Perform pre-filtering of the data
+deseq2Data <- deseq2Data[rowSums(counts(deseq2Data)) > 5, ]
+
+# 1. Run pipeline for differential expression steps (if you set up parallel processing, set parallel = TRUE here)
+deseq2Data <- DESeq(deseq2Data)
+
+# deseq2Data
+deseq2Results <- results(deseq2Data, contrast=c("dementia", 
+                                                "No Dementia", 
+                                                "Dementia"))
+
+# summary statistics
+summary(deseq2Results)
+
+# order of increasing p-values
+DEresults <- deseq2Results[order(deseq2Results$pvalue),]
+
+# printing the p-values
+print(DEresults)
+
+# Using DEseq2 built in method
+plotMA(deseq2Results)
+
+
 
 
 
